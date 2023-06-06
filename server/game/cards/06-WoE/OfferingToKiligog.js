@@ -30,10 +30,8 @@ class OfferingToKiligog extends Card {
         });
 
         this.omni({
-            gameAction: ability.actions.makeTokenCreature((context) => ({
-                target: context.player,
-                amount: context.source.childCards.length,
-                cards: context.source.childCards,
+            gameAction: ability.actions.sequentialMakeTokenCreature((context) => ({
+                forEach: context.source.childCards,
                 cardLocation: 'under'
             }))
         });

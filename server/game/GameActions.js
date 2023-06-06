@@ -149,7 +149,9 @@ const Actions = {
     sequentialForEach: (propertyFactory) =>
         new GameActions.SequentialForEachAction(propertyFactory),
     sequentialPutIntoPlay: (propertyFactory) =>
-        new GameActions.SequentialPutIntoPlayAction(propertyFactory)
+        new GameActions.SequentialPutIntoPlayAction(propertyFactory),
+    sequentialMakeTokenCreature: (propertyFactory) =>
+        new GameActions.SequentialMakeTokenCreatureAction(propertyFactory)
 };
 
 module.exports = Actions;
