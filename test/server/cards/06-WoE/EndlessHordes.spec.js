@@ -148,4 +148,42 @@ describe('Endless Hordes', function () {
             expect(this.player1).toHavePrompt('Choose a card to play, discard or use');
         });
     });
+
+    describe("Endless Hordes's ability", function () {
+        beforeEach(function () {
+            this.setupTest({
+                player1: {
+                    house: 'brobnar',
+                    token: 'prospector',
+                    hand: ['banner-of-battle', 'brikk-nastee', 'endless-hordes'],
+                    inPlay: [
+                        'bumpsy',
+                        'gezrăhi-blacksmith',
+                        'prospector:anger',
+                        'prospector:anger',
+                        'bumpsy',
+                        'orator-hissaro',
+                        'the-old-tinker'
+                    ]
+                },
+                player2: {
+                    inPlay: ['prince-derric-unifier', 'challe-the-safeguard']
+                }
+            });
+        });
+
+        it('should handle taunt', function () {
+            this.player1.play(this.bannerOfBattle);
+            this.player1.playCreature(this.brikkNastee, true);
+            this.player1.play(this.endlessHordes);
+            this.player1.clickPrompt('Left');
+            this.player1.clickPrompt('Left');
+            let p1 = this.player1.player.creaturesInPlay[1];
+            let p2 = this.player1.player.creaturesInPlay[0];
+            this.player1.clickCard(this.challeTheSafeguard);
+            this.player1.clickCard(this.princeDerricUnifier);
+            expect(p1.location).toBe('discard');
+            expect(p2.location).toBe('discard');
+        });
+    });
 });
