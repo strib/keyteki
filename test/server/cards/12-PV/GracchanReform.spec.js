@@ -11,7 +11,7 @@ describe('Gracchan Reform', function () {
                         'trust-your-feelings',
                         'wasteful-regret'
                     ],
-                    hand: ['gracchan-reform'],
+                    hand: ['gracchan-reform', 'exile'],
                     discard: ['urchin', 'hunting-witch', 'nerve-blast']
                 },
                 player2: {
@@ -61,6 +61,21 @@ describe('Gracchan Reform', function () {
             this.player2.endTurn();
             expect(this.player1).not.toHavePrompt('sanctum');
             expect(this.player1).not.toHavePrompt('saurian');
+            this.player1.clickPrompt('saurian');
+            this.player1.moveCard(this.gracchanReform, 'hand');
+            this.player2.moveCard(this.dustPixie, 'deck');
+            this.player1.play(this.gracchanReform);
+            expect(this.dustPixie.location).toBe('play area');
+            expect(this.dustPixie.controller).toBe(this.player1.player);
+            this.player1.activateProphecy(this.trustYourFeelings, this.exile);
+            this.player1.clickPrompt('sanctum');
+            this.player1.amber = 1;
+            this.player1.endTurn();
+            this.player2.player.deck = [];
+            this.player2.clickPrompt('sanctum');
+            this.player2.endTurn();
+            expect(this.player1).not.toHavePrompt('sanctum');
+            expect(this.player1).not.toHavePrompt('untamed');
         });
     });
 });
