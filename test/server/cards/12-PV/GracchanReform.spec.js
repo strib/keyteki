@@ -17,7 +17,7 @@ describe('Gracchan Reform', function () {
                 player2: {
                     amber: 4,
                     inPlay: ['krump'],
-                    discard: ['dust-pixie']
+                    discard: ['dust-pixie', 'barrister-joya']
                 }
             });
         });
@@ -44,6 +44,23 @@ describe('Gracchan Reform', function () {
             expect(this.player1.player.archives.length).toBe(2);
             expect(this.gracchanReform.location).toBe('discard');
             expect(this.player2).toHavePrompt('Choose a card to play, discard or use');
+        });
+
+        it('should let you choose the house of a creature played that way while it is in play', function () {
+            this.player2.moveCard(this.barristerJoya, 'deck');
+            this.player1.play(this.gracchanReform);
+            this.player1.endTurn();
+            this.player2.clickPrompt('brobnar');
+            this.player2.endTurn();
+            this.player1.clickPrompt('sanctum');
+            this.player1.fightWith(this.barristerJoya, this.krump);
+            expect(this.barristerJoya.location).toBe('discard');
+            expect(this.player2.player.discard).toContain(this.barristerJoya);
+            this.player1.endTurn();
+            this.player2.clickPrompt('brobnar');
+            this.player2.endTurn();
+            expect(this.player1).not.toHavePrompt('sanctum');
+            expect(this.player1).not.toHavePrompt('saurian');
         });
     });
 });
