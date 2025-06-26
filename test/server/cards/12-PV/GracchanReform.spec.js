@@ -11,8 +11,8 @@ describe('Gracchan Reform', function () {
                         'trust-your-feelings',
                         'wasteful-regret'
                     ],
-                    hand: ['gracchan-reform', 'exile'],
-                    discard: ['urchin', 'hunting-witch', 'nerve-blast']
+                    hand: ['gracchan-reform', 'strategic-feint'],
+                    discard: ['sensor-chief-garcia', 'cxo-taber', 'exile']
                 },
                 player2: {
                     amber: 4,
@@ -35,12 +35,12 @@ describe('Gracchan Reform', function () {
             this.player1.activateProphecy(this.overreach, this.gracchanReform);
             this.player1.endTurn();
             this.player2.clickPrompt('brobnar');
-            this.player2.moveCard(this.urchin, 'deck');
-            this.player2.moveCard(this.huntingWitch, 'deck');
-            this.player2.moveCard(this.nerveBlast, 'deck');
+            this.player2.moveCard(this.sensorChiefGarcia, 'deck');
+            this.player2.moveCard(this.cxoTaber, 'deck');
+            this.player2.moveCard(this.exile, 'deck');
             this.player2.reap(this.krump);
-            expect(this.nerveBlast.location).toBe('archives');
-            expect(this.huntingWitch.location).toBe('archives');
+            expect(this.exile.location).toBe('archives');
+            expect(this.cxoTaber.location).toBe('archives');
             expect(this.player1.player.archives.length).toBe(2);
             expect(this.gracchanReform.location).toBe('discard');
             expect(this.player2).toHavePrompt('Choose a card to play, discard or use');
@@ -67,7 +67,7 @@ describe('Gracchan Reform', function () {
             this.player1.play(this.gracchanReform);
             expect(this.dustPixie.location).toBe('play area');
             expect(this.dustPixie.controller).toBe(this.player1.player);
-            this.player1.activateProphecy(this.trustYourFeelings, this.exile);
+            this.player1.activateProphecy(this.trustYourFeelings, this.strategicFeint);
             this.player1.clickPrompt('sanctum');
             this.player1.amber = 1;
             this.player1.endTurn();
