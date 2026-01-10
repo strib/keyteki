@@ -59,6 +59,23 @@ describe('Quixxle Stone', function () {
             expect(this.player1.inPlay).toContain(this.malison);
         });
 
+        it('restriction updates dynamically when creature counts change', function () {
+            this.player1.play(this.malison); // p1 has more creatures (1 vs 0)
+
+            this.player1.clickCard(this.shooler);
+            expect(this.player1).toHavePrompt('Shooler');
+            expect(this.player1).not.toHavePromptButton('Play this creature');
+
+            this.player2.moveCard(this.badPenny, 'play area'); // counts become equal (1 vs 1)
+
+            this.player1.clickCard(this.shooler);
+            expect(this.player1).toHavePrompt('Shooler');
+            expect(this.player1).toHavePromptButton('Play this creature');
+            this.player1.clickPrompt('Play this creature');
+
+            expect(this.player1.inPlay).toContain(this.shooler);
+        });
+
         it('non-owner player has more creatures, cannot play a creature', function () {
             this.player2.moveCard(this.badPenny, 'play area');
             this.player1.endTurn();
