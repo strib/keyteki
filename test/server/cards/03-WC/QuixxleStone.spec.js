@@ -65,6 +65,7 @@ describe('Quixxle Stone', function () {
             this.player1.clickCard(this.shooler);
             expect(this.player1).toHavePrompt('Shooler');
             expect(this.player1).not.toHavePromptButton('Play this creature');
+            this.player1.clickPrompt('Cancel');
 
             this.player2.moveCard(this.badPenny, 'play area'); // counts become equal (1 vs 1)
 
