@@ -73,6 +73,7 @@ describe('Quixxle Stone', function () {
             expect(this.player1).toHavePrompt('Shooler');
             expect(this.player1).toHavePromptButton('Play this creature');
             this.player1.clickPrompt('Play this creature');
+            this.player1.clickPrompt('Left');
 
             expect(this.player1.inPlay).toContain(this.shooler);
         });
