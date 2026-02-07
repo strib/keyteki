@@ -1,6 +1,7 @@
 # Keyteki Chat Translator Extension
 
-This Chrome extension translates in-game chat messages on Keyteki into a language you choose.
+This Chrome extension translates in-game chat and the game log on Keyteki into a language you
+choose.
 
 ## Load the extension
 
@@ -21,6 +22,5 @@ server instead.
 
 ## Behavior
 
-- Only player chat messages are translated.
-- System/game log messages are left unchanged.
-- Translated messages are updated live as new chat messages arrive.
+- Player chat messages and the in-game log are translated.
+- Translated messages are updated live as new messages arrive.
