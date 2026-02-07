@@ -75,7 +75,27 @@ const requestTranslation = (text, targetLanguage) =>
 const translateTextSegment = async (text) => {
     const leading = text.match(/^\s+/)?.[0] ?? '';
     const trailing = text.match(/\s+$/)?.[0] ?? '';
-    const core = text.trim();
+    let core = text.trim();
+
+    if (!core) {
+        return text;
+    }
+
+    let prefix = '';
+    let suffix = '';
+    const prefixMatch = core.match(/^[^\p{L}\p{N}]+/u);
+
+    if (prefixMatch) {
+        prefix = prefixMatch[0];
+        core = core.slice(prefix.length);
+    }
+
+    const suffixMatch = core.match(/[^\p{L}\p{N}]+$/u);
+
+    if (suffixMatch) {
+        suffix = suffixMatch[0];
+        core = core.slice(0, -suffix.length);
+    }
 
     if (!core) {
         return text;
@@ -87,7 +107,7 @@ const translateTextSegment = async (text) => {
         return text;
     }
 
-    return `${leading}${translatedCore}${trailing}`;
+    return `${leading}${prefix}${translatedCore}${suffix}${trailing}`;
 };
 
 const translateNode = async (node) => {
