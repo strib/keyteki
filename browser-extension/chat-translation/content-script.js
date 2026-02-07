@@ -1,12 +1,6 @@
 /* global chrome */
 
-const getDefaultLanguage = () => {
-    if (navigator?.language) {
-        return navigator.language.split('-')[0];
-    }
-
-    return 'en';
-};
+const getDefaultLanguage = () => navigator.language.split('-')[0];
 
 const DEFAULT_SETTINGS = {
     enabled: true,
@@ -26,28 +20,10 @@ let settings = { ...DEFAULT_SETTINGS };
 let chatObserver = null;
 let attachInterval = null;
 
-const applyLocalOverrides = (loadedSettings) => {
-    if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-        return loadedSettings;
-    }
-
-    const params = new URLSearchParams(window.location.search);
-    const overrideLanguage = params.get('chatTranslationLanguage');
-    const overrideEndpoint = params.get('chatTranslationEndpoint');
-    const overrideApiKey = params.get('chatTranslationApiKey');
-
-    return {
-        ...loadedSettings,
-        targetLanguage: overrideLanguage?.trim() || loadedSettings.targetLanguage,
-        apiEndpoint: overrideEndpoint?.trim() || loadedSettings.apiEndpoint,
-        apiKey: overrideApiKey?.trim() || loadedSettings.apiKey
-    };
-};
-
 const loadSettings = () =>
     new Promise((resolve) => {
         chrome.storage.sync.get(DEFAULT_SETTINGS, (stored) => {
-            settings = applyLocalOverrides({ ...DEFAULT_SETTINGS, ...stored });
+            settings = { ...DEFAULT_SETTINGS, ...stored };
             resolve(settings);
         });
     });
@@ -66,35 +42,22 @@ const restoreOriginal = (node) => {
 
 const requestTranslation = (text, targetLanguage) =>
     new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage(
-            {
-                type: 'translate',
-                text,
-                targetLanguage,
-                apiEndpoint: settings.apiEndpoint,
-                apiKey: settings.apiKey
-            },
-            (response) => {
-                if (chrome.runtime.lastError) {
-                    reject(new Error(chrome.runtime.lastError.message));
-                    return;
-                }
-
-                if (!response || response.error) {
-                    reject(new Error(response?.error || 'Translation failed.'));
-                    return;
-                }
-
-                resolve(response.translatedText);
+        chrome.runtime.sendMessage({ type: 'translate', text, targetLanguage }, (response) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
             }
-        );
+
+            if (!response || response.error) {
+                reject(new Error(response?.error || 'Translation failed.'));
+                return;
+            }
+
+            resolve(response.translatedText);
+        });
     });
 
 const translateNode = async (node) => {
-    if (!node) {
-        return;
-    }
-
     const currentText = node.dataset[TRANSLATION_ORIGINAL_ATTR] ?? node.textContent;
     const trimmedText = currentText.trim();
 
@@ -107,11 +70,6 @@ const translateNode = async (node) => {
     }
 
     if (!settings.enabled) {
-        restoreOriginal(node);
-        return;
-    }
-
-    if (!settings.targetLanguage) {
         restoreOriginal(node);
         return;
     }
@@ -132,11 +90,6 @@ const translateNode = async (node) => {
 
     try {
         const translatedText = await requestTranslation(trimmedText, settings.targetLanguage);
-
-        if (!translatedText) {
-            restoreOriginal(node);
-            return;
-        }
 
         node.dataset[TRANSLATION_LANGUAGE_ATTR] = settings.targetLanguage;
         node.dataset[TRANSLATION_TEXT_ATTR] = translatedText;
@@ -241,7 +194,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === 'settings-updated') {
+    if (message && message.type === 'settings-updated') {
         refreshTranslations();
     }
 });

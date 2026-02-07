@@ -1,12 +1,6 @@
 /* global chrome */
 
-const getDefaultLanguage = () => {
-    if (chrome?.i18n?.getUILanguage) {
-        return chrome.i18n.getUILanguage().split('-')[0];
-    }
-
-    return 'en';
-};
+const getDefaultLanguage = () => chrome.i18n.getUILanguage().split('-')[0];
 
 const DEFAULT_SETTINGS = {
     enabled: true,
@@ -18,44 +12,18 @@ const DEFAULT_SETTINGS = {
 let settings = { ...DEFAULT_SETTINGS };
 const translationCache = new Map();
 
-const normalizeEndpoint = (endpoint) => {
-    if (!endpoint) {
-        return '';
-    }
-
-    try {
-        const url = new URL(endpoint);
-
-        if (!url.pathname || url.pathname === '/') {
-            url.pathname = '/translate';
-        }
-
-        return url.toString();
-    } catch (error) {
-        return endpoint;
-    }
-};
-
 const updateSettings = (newSettings) => {
     settings = { ...settings, ...newSettings };
 };
 
-const buildCacheKey = (text, targetLanguage, apiEndpoint) => {
-    const endpoint = normalizeEndpoint(apiEndpoint);
-    return `${endpoint}::${targetLanguage}::${text}`;
-};
+const buildCacheKey = (text, targetLanguage, apiEndpoint) =>
+    `${apiEndpoint}::${targetLanguage}::${text}`;
 
 const fetchTranslation = async (text, targetLanguage, apiEndpoint, apiKey) => {
     const normalizedText = text.trim();
 
     if (!normalizedText) {
         return '';
-    }
-
-    const endpoint = normalizeEndpoint(apiEndpoint);
-
-    if (!endpoint) {
-        throw new Error('Translation endpoint is not configured.');
     }
 
     const cacheKey = buildCacheKey(normalizedText, targetLanguage, apiEndpoint);
@@ -75,7 +43,7 @@ const fetchTranslation = async (text, targetLanguage, apiEndpoint, apiKey) => {
         payload.api_key = apiKey;
     }
 
-    const response = await fetch(endpoint, {
+    const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -89,11 +57,7 @@ const fetchTranslation = async (text, targetLanguage, apiEndpoint, apiKey) => {
     }
 
     const data = await response.json();
-    const translatedText = data.translatedText;
-
-    if (!translatedText) {
-        throw new Error('Translation response missing translatedText.');
-    }
+    const translatedText = data.translatedText || '';
 
     translationCache.set(cacheKey, translatedText);
 
@@ -129,15 +93,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const targetLanguage = message.targetLanguage || settings.targetLanguage;
     const text = message.text || '';
-    const apiEndpoint = message.apiEndpoint || settings.apiEndpoint;
-    const apiKey = message.apiKey ?? settings.apiKey;
 
     if (!settings.enabled) {
         sendResponse({ translatedText: text });
         return;
     }
 
-    fetchTranslation(text, targetLanguage, apiEndpoint, apiKey)
+    fetchTranslation(text, targetLanguage, settings.apiEndpoint, settings.apiKey)
         .then((translatedText) => sendResponse({ translatedText }))
         .catch((error) => {
             sendResponse({ error: error.message || 'Translation failed.' });

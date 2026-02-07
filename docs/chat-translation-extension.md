@@ -45,12 +45,7 @@ any HTTPS endpoint so you can point it at your own API.
 - Only player chat messages are translated. System/game log messages are left unchanged.
 - If the translation service is unavailable, the original chat text remains unchanged.
 
-### Local development overrides
+### Local development
 
-When testing on localhost, you can override the settings via query parameters:
-
-```
-http://localhost:8000/chat-translation-test.html?chatTranslationLanguage=es&chatTranslationEndpoint=http://localhost:5050/translate
-```
-
-These overrides are only honored on `localhost` and `127.0.0.1`.
+If you are testing locally, point the translation endpoint at your own LibreTranslate instance or
+stub server.
