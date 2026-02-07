@@ -1,0 +1,28 @@
+{
+    "manifest_version": 3,
+    "name": "Keyteki Chat Translator",
+    "version": "1.0.0",
+    "description": "Translate in-game chat messages to your chosen language.",
+    "permissions": ["storage"],
+    "host_permissions": ["<all_urls>"],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://thecrucible.online/*",
+                "https://*.thecrucible.online/*",
+                "http://localhost:*/*",
+                "http://127.0.0.1:*/*"
+            ],
+            "js": ["content-script.js"],
+            "run_at": "document_idle"
+        }
+    ],
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
+    }
+}
