@@ -13,9 +13,8 @@ const CHAT_CONTAINER_SELECTOR = '.gamechat .messages';
 const CHAT_MESSAGE_SELECTOR = '.message .message-fragment';
 const TRANSLATION_LANGUAGE_ATTR = 'translationLanguage';
 const TRANSLATION_PENDING_ATTR = 'translationPending';
-const PLACEHOLDER_START = '\uE000';
-const PLACEHOLDER_END = '\uE001';
-const PLACEHOLDER_REGEX = new RegExp(`${PLACEHOLDER_START}(\\d+)${PLACEHOLDER_END}`, 'g');
+const PLACEHOLDER_ATTR = 'data-kt-placeholder';
+const PLACEHOLDER_TAG_REGEX = new RegExp('<span data-kt-placeholder="\\d+"></span>', 'g');
 
 let settings = { ...DEFAULT_SETTINGS };
 let chatObserver = null;
@@ -23,23 +22,9 @@ let attachInterval = null;
 const originalContent = new WeakMap();
 
 const buildOriginalContent = (node) => {
-    const placeholders = [];
-    let text = '';
+    const nodes = Array.from(node.childNodes).map((child) => child.cloneNode(true));
 
-    node.childNodes.forEach((child) => {
-        if (child.nodeType === Node.TEXT_NODE) {
-            text += child.textContent || '';
-            return;
-        }
-
-        if (child.nodeType === Node.ELEMENT_NODE) {
-            const placeholder = `${PLACEHOLDER_START}${placeholders.length}${PLACEHOLDER_END}`;
-            placeholders.push(child.cloneNode(true));
-            text += placeholder;
-        }
-    });
-
-    return { text, placeholders };
+    return { nodes };
 };
 
 const getOriginalContent = (node) => {
@@ -54,49 +39,65 @@ const getOriginalContent = (node) => {
     return content;
 };
 
-const buildNodesFromText = (text, placeholders) => {
-    const nodes = [];
-    let lastIndex = 0;
-    let match;
+const buildTranslationPayload = (nodes) => {
+    const placeholders = [];
+    let html = '';
 
-    PLACEHOLDER_REGEX.lastIndex = 0;
-
-    while ((match = PLACEHOLDER_REGEX.exec(text)) !== null) {
-        if (match.index > lastIndex) {
-            nodes.push(document.createTextNode(text.slice(lastIndex, match.index)));
+    nodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+            html += child.textContent || '';
+            return;
         }
 
-        const placeholderIndex = Number(match[1]);
-        const placeholderNode = placeholders[placeholderIndex];
-
-        if (placeholderNode) {
-            nodes.push(placeholderNode.cloneNode(true));
+        if (child.nodeType === Node.ELEMENT_NODE) {
+            const placeholder = `<span ${PLACEHOLDER_ATTR}="${placeholders.length}"></span>`;
+            placeholders.push(child.cloneNode(true));
+            html += placeholder;
         }
+    });
 
-        lastIndex = match.index + match[0].length;
+    return { html, placeholders };
+};
+
+const stripPlaceholderTags = (html) => html.replace(PLACEHOLDER_TAG_REGEX, '');
+
+const collectTranslatedNodes = (node, placeholders) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+        return [document.createTextNode(node.textContent || '')];
     }
 
-    if (lastIndex < text.length) {
-        nodes.push(document.createTextNode(text.slice(lastIndex)));
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+        return [];
+    }
+
+    const placeholderIndex = node.getAttribute(PLACEHOLDER_ATTR);
+
+    if (placeholderIndex !== null) {
+        const placeholder = placeholders[Number(placeholderIndex)];
+        return placeholder ? [placeholder.cloneNode(true)] : [];
+    }
+
+    const nodes = [];
+    node.childNodes.forEach((child) => {
+        nodes.push(...collectTranslatedNodes(child, placeholders));
+    });
+
+    if (nodes.length === 0 && node.textContent) {
+        nodes.push(document.createTextNode(node.textContent));
     }
 
     return nodes;
 };
 
-const stripPlaceholders = (text) => {
-    PLACEHOLDER_REGEX.lastIndex = 0;
-    return text.replace(PLACEHOLDER_REGEX, '');
-};
+const buildNodesFromHtml = (html, placeholders) => {
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const nodes = [];
 
-const applyTextWithPlaceholders = (node, text, placeholders) => {
-    const nodes = buildNodesFromText(text, placeholders);
+    parsed.body.childNodes.forEach((child) => {
+        nodes.push(...collectTranslatedNodes(child, placeholders));
+    });
 
-    if (nodes.length === 0) {
-        node.replaceChildren(document.createTextNode(text));
-        return;
-    }
-
-    node.replaceChildren(...nodes);
+    return nodes;
 };
 
 const loadSettings = () =>
@@ -110,8 +111,8 @@ const loadSettings = () =>
 const restoreOriginal = (node) => {
     const original = getOriginalContent(node);
 
-    if (original) {
-        applyTextWithPlaceholders(node, original.text, original.placeholders);
+    if (original?.nodes?.length) {
+        node.replaceChildren(...original.nodes.map((child) => child.cloneNode(true)));
     }
 
     delete node.dataset[TRANSLATION_LANGUAGE_ATTR];
@@ -120,26 +121,31 @@ const restoreOriginal = (node) => {
 
 const requestTranslation = (text, targetLanguage) =>
     new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({ type: 'translate', text, targetLanguage }, (response) => {
-            if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-                return;
-            }
+        chrome.runtime.sendMessage(
+            { type: 'translate', text, targetLanguage, format: 'html' },
+            (response) => {
+                if (chrome.runtime.lastError) {
+                    reject(new Error(chrome.runtime.lastError.message));
+                    return;
+                }
 
-            if (!response || response.error) {
-                reject(new Error(response?.error || 'Translation failed.'));
-                return;
-            }
+                if (!response || response.error) {
+                    reject(new Error(response?.error || 'Translation failed.'));
+                    return;
+                }
 
-            resolve(response.translatedText);
-        });
+                resolve(response.translatedText);
+            }
+        );
     });
 
 const translateNode = async (node) => {
     const original = getOriginalContent(node);
-    const strippedText = stripPlaceholders(original.text).trim();
+    const hasText = original.nodes.some(
+        (child) => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()
+    );
 
-    if (!strippedText) {
+    if (!hasText) {
         return;
     }
 
@@ -159,15 +165,30 @@ const translateNode = async (node) => {
     node.dataset[TRANSLATION_PENDING_ATTR] = 'true';
 
     try {
-        const translatedText = await requestTranslation(original.text, settings.targetLanguage);
+        const { html, placeholders } = buildTranslationPayload(original.nodes);
+        const strippedHtml = stripPlaceholderTags(html).trim();
 
-        if (!translatedText) {
+        if (!strippedHtml) {
+            restoreOriginal(node);
+            return;
+        }
+
+        const translatedHtml = await requestTranslation(html, settings.targetLanguage);
+
+        if (!translatedHtml) {
+            restoreOriginal(node);
+            return;
+        }
+
+        const translatedNodes = buildNodesFromHtml(translatedHtml, placeholders);
+
+        if (translatedNodes.length === 0) {
             restoreOriginal(node);
             return;
         }
 
         node.dataset[TRANSLATION_LANGUAGE_ATTR] = settings.targetLanguage;
-        applyTextWithPlaceholders(node, translatedText, original.placeholders);
+        node.replaceChildren(...translatedNodes);
     } catch (error) {
         console.warn('Chat translation failed', error);
     } finally {

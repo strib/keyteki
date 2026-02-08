@@ -19,7 +19,7 @@ const updateSettings = (newSettings) => {
 const buildCacheKey = (text, targetLanguage, apiEndpoint) =>
     `${apiEndpoint}::${targetLanguage}::${text}`;
 
-const fetchTranslation = async (text, targetLanguage, apiEndpoint, apiKey) => {
+const fetchTranslation = async (text, targetLanguage, apiEndpoint, apiKey, format) => {
     const normalizedText = text.trim();
 
     if (!normalizedText) {
@@ -36,7 +36,7 @@ const fetchTranslation = async (text, targetLanguage, apiEndpoint, apiKey) => {
         q: normalizedText,
         source: 'auto',
         target: targetLanguage,
-        format: 'text'
+        format
     };
 
     if (apiKey) {
@@ -99,7 +99,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
     }
 
-    fetchTranslation(text, targetLanguage, settings.apiEndpoint, settings.apiKey)
+    fetchTranslation(
+        text,
+        targetLanguage,
+        settings.apiEndpoint,
+        settings.apiKey,
+        message.format || 'text'
+    )
         .then((translatedText) => sendResponse({ translatedText }))
         .catch((error) => {
             sendResponse({ error: error.message || 'Translation failed.' });
