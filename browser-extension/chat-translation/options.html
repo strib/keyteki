@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Chat Translation Settings</title>
+        <link rel="stylesheet" href="options.css" />
+    </head>
+    <body>
+        <main class="container">
+            <header>
+                <h1>Chat Translation Settings</h1>
+                <p>
+                    Configure the language you want chat messages translated into. Changes are
+                    saved automatically.
+                </p>
+            </header>
+
+            <section class="settings">
+                <label class="setting-row">
+                    <span>Enable translation</span>
+                    <input type="checkbox" id="enabled" />
+                </label>
+
+                <label class="setting-column">
+                    <span>Target language</span>
+                    <select id="targetLanguage"></select>
+                </label>
+
+                <label class="setting-column">
+                    <span>Translation provider</span>
+                    <select id="provider">
+                        <option value="libretranslate">LibreTranslate</option>
+                        <option value="google">Google Translate API</option>
+                    </select>
+                </label>
+
+                <label class="setting-column">
+                    <span>Translation API endpoint</span>
+                    <input
+                        type="url"
+                        id="apiEndpoint"
+                        placeholder="https://libretranslate.com/translate"
+                    />
+                    <small class="hint">
+                        LibreTranslate requires an API key. Use your own endpoint if you host a
+                        translator.
+                    </small>
+                </label>
+
+                <label class="setting-column">
+                    <span>API key (optional)</span>
+                    <input type="password" id="apiKey" placeholder="Enter API key if required" />
+                </label>
+
+                <label class="setting-column">
+                    <span>Google Translate API key</span>
+                    <input
+                        type="password"
+                        id="googleApiKey"
+                        placeholder="Enter Google Translate API key"
+                    />
+                    <small class="hint">
+                        Used only when the provider is set to Google Translate API.
+                    </small>
+                </label>
+            </section>
+
+            <div id="status" role="status" aria-live="polite"></div>
+        </main>
+
+        <script src="options.js"></script>
+    </body>
+</html>

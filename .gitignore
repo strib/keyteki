@@ -7,6 +7,7 @@ typings
 coverage
 *.log
 *.json
+!browser-extension/chat-translation/manifest.json
 server/events.txt
 .DS_Store
 config/local*
