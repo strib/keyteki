@@ -15,10 +15,10 @@ const TRANSLATION_LANGUAGE_ATTR = 'translationLanguage';
 const TRANSLATION_PENDING_ATTR = 'translationPending';
 const PLACEHOLDER_PREFIX = '[[';
 const PLACEHOLDER_SUFFIX = ']]';
-const PLACEHOLDER_REGEX = /\[\[\s*(\d+)\s*\]\]/g;
+const PLACEHOLDER_REGEX = /\[+\s*(\d+)\s*\]+/g;
 const TERM_PLACEHOLDER_PREFIX = '[[@';
 const TERM_PLACEHOLDER_SUFFIX = ']]';
-const TERM_PLACEHOLDER_REGEX = /\[\[@\s*(\d+)\s*\]\]/g;
+const TERM_PLACEHOLDER_REGEX = /\[+@\s*(\d+)\s*\]+/g;
 const PROTECTED_TERMS = ['Æmber', 'Aember'];
 
 let settings = { ...DEFAULT_SETTINGS };
