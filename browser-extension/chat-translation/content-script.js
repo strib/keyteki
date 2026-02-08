@@ -114,6 +114,30 @@ const collectTranslatedNodes = (node, placeholders) => {
     return nodes;
 };
 
+const normalizeSpacing = (nodes) => {
+    const normalized = [];
+
+    nodes.forEach((node) => {
+        const previous = normalized[normalized.length - 1];
+
+        if (
+            previous &&
+            previous.nodeType === Node.ELEMENT_NODE &&
+            node.nodeType === Node.TEXT_NODE
+        ) {
+            const text = node.textContent || '';
+
+            if (text && !/^\s/.test(text) && !/^[.,;:!?)]/.test(text)) {
+                normalized.push(document.createTextNode(' '));
+            }
+        }
+
+        normalized.push(node);
+    });
+
+    return normalized;
+};
+
 const buildNodesFromHtml = (html, placeholders) => {
     const parsed = new DOMParser().parseFromString(html, 'text/html');
     const nodes = [];
@@ -122,7 +146,7 @@ const buildNodesFromHtml = (html, placeholders) => {
         nodes.push(...collectTranslatedNodes(child, placeholders));
     });
 
-    return nodes;
+    return normalizeSpacing(nodes);
 };
 
 const loadSettings = () =>
