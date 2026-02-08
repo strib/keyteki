@@ -13,8 +13,9 @@ const CHAT_CONTAINER_SELECTOR = '.gamechat .messages';
 const CHAT_MESSAGE_SELECTOR = '.message .message-fragment';
 const TRANSLATION_LANGUAGE_ATTR = 'translationLanguage';
 const TRANSLATION_PENDING_ATTR = 'translationPending';
-const PLACEHOLDER_ATTR = 'data-kt-placeholder';
-const PLACEHOLDER_TAG_REGEX = new RegExp('<span data-kt-placeholder="\\d+"></span>', 'g');
+const PLACEHOLDER_START = '\uE000';
+const PLACEHOLDER_END = '\uE001';
+const PLACEHOLDER_REGEX = new RegExp(`${PLACEHOLDER_START}(\\d+)${PLACEHOLDER_END}`, 'g');
 
 let settings = { ...DEFAULT_SETTINGS };
 let chatObserver = null;
@@ -41,112 +42,67 @@ const getOriginalContent = (node) => {
 
 const buildTranslationPayload = (nodes) => {
     const placeholders = [];
-    let html = '';
+    let text = '';
 
     nodes.forEach((child) => {
         if (child.nodeType === Node.TEXT_NODE) {
-            html += child.textContent || '';
+            text += child.textContent || '';
             return;
         }
 
         if (child.nodeType === Node.ELEMENT_NODE) {
-            const placeholder = `<span ${PLACEHOLDER_ATTR}="${placeholders.length}"></span>`;
+            const placeholder = `${PLACEHOLDER_START}${placeholders.length}${PLACEHOLDER_END}`;
             placeholders.push(child.cloneNode(true));
-            html += placeholder;
+            text += placeholder;
         }
     });
 
-    return { html, placeholders };
+    return { text, placeholders };
 };
 
-const stripPlaceholderTags = (html) => html.replace(PLACEHOLDER_TAG_REGEX, '');
-
-const ensureTrailingSpace = (node) => {
-    if (!node) {
-        return node;
-    }
-
-    if (node.nodeType === Node.TEXT_NODE) {
-        if (node.textContent && /\s$/.test(node.textContent)) {
-            return node;
-        }
-
-        node.textContent = `${node.textContent || ''} `;
-        return node;
-    }
-
-    if (node.nodeType === Node.ELEMENT_NODE) {
-        if (node.textContent && /\s$/.test(node.textContent)) {
-            return node;
-        }
-
-        node.appendChild(document.createTextNode(' '));
-    }
-
-    return node;
+const stripPlaceholders = (text) => {
+    PLACEHOLDER_REGEX.lastIndex = 0;
+    return text.replace(PLACEHOLDER_REGEX, '');
 };
 
-const collectTranslatedNodes = (node, placeholders) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-        return [document.createTextNode(node.textContent || '')];
-    }
-
-    if (node.nodeType !== Node.ELEMENT_NODE) {
-        return [];
-    }
-
-    const placeholderIndex = node.getAttribute(PLACEHOLDER_ATTR);
-
-    if (placeholderIndex !== null) {
-        const placeholder = placeholders[Number(placeholderIndex)];
-        return placeholder ? [ensureTrailingSpace(placeholder.cloneNode(true))] : [];
-    }
-
+const buildNodesFromText = (text, placeholders) => {
     const nodes = [];
-    node.childNodes.forEach((child) => {
-        nodes.push(...collectTranslatedNodes(child, placeholders));
-    });
+    let lastIndex = 0;
+    let match;
 
-    if (nodes.length === 0 && node.textContent) {
-        nodes.push(document.createTextNode(node.textContent));
+    PLACEHOLDER_REGEX.lastIndex = 0;
+
+    while ((match = PLACEHOLDER_REGEX.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            nodes.push(document.createTextNode(text.slice(lastIndex, match.index)));
+        }
+
+        const placeholderIndex = Number(match[1]);
+        const placeholderNode = placeholders[placeholderIndex];
+
+        if (placeholderNode) {
+            nodes.push(placeholderNode.cloneNode(true));
+        }
+
+        lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+        nodes.push(document.createTextNode(text.slice(lastIndex)));
     }
 
     return nodes;
 };
 
-const normalizeSpacing = (nodes) => {
-    const normalized = [];
+const applyTextWithPlaceholders = (node, text, placeholders) => {
+    const nodes = buildNodesFromText(text, placeholders);
 
-    nodes.forEach((node) => {
-        const previous = normalized[normalized.length - 1];
+    if (nodes.length === 0) {
+        node.replaceChildren(document.createTextNode(text));
+        return;
+    }
 
-        if (
-            previous &&
-            previous.nodeType === Node.ELEMENT_NODE &&
-            node.nodeType === Node.TEXT_NODE
-        ) {
-            const text = node.textContent || '';
-
-            if (text && !/^\s/.test(text) && !/^[.,;:!?)]/.test(text)) {
-                normalized.push(document.createTextNode(' '));
-            }
-        }
-
-        normalized.push(node);
-    });
-
-    return normalized;
-};
-
-const buildNodesFromHtml = (html, placeholders) => {
-    const parsed = new DOMParser().parseFromString(html, 'text/html');
-    const nodes = [];
-
-    parsed.body.childNodes.forEach((child) => {
-        nodes.push(...collectTranslatedNodes(child, placeholders));
-    });
-
-    return normalizeSpacing(nodes);
+    node.replaceChildren(...nodes);
 };
 
 const loadSettings = () =>
@@ -190,11 +146,11 @@ const requestTranslation = (text, targetLanguage) =>
 
 const translateNode = async (node) => {
     const original = getOriginalContent(node);
-    const hasText = original.nodes.some(
-        (child) => child.nodeType === Node.TEXT_NODE && child.textContent?.trim()
-    );
+    const strippedText = stripPlaceholders(
+        original.nodes.map((child) => child.textContent || '').join('')
+    ).trim();
 
-    if (!hasText) {
+    if (!strippedText) {
         return;
     }
 
@@ -214,34 +170,30 @@ const translateNode = async (node) => {
     node.dataset[TRANSLATION_PENDING_ATTR] = 'true';
 
     try {
-        const { html, placeholders } = buildTranslationPayload(original.nodes);
-        const leadingWhitespace = html.match(/^\s+/)?.[0] ?? '';
-        const trailingWhitespace = html.match(/\s+$/)?.[0] ?? '';
-        const trimmedHtml = html.trim();
-        const strippedHtml = stripPlaceholderTags(trimmedHtml).trim();
+        const { text, placeholders } = buildTranslationPayload(original.nodes);
+        const leadingWhitespace = text.match(/^\s+/)?.[0] ?? '';
+        const trailingWhitespace = text.match(/\s+$/)?.[0] ?? '';
+        const trimmedText = text.trim();
+        const strippedTextContent = stripPlaceholders(trimmedText).trim();
 
-        if (!strippedHtml) {
+        if (!strippedTextContent) {
             restoreOriginal(node);
             return;
         }
 
-        const translatedHtml = await requestTranslation(trimmedHtml, settings.targetLanguage);
+        const translatedText = await requestTranslation(trimmedText, settings.targetLanguage);
 
-        if (!translatedHtml) {
-            restoreOriginal(node);
-            return;
-        }
-
-        const normalizedHtml = `${leadingWhitespace}${translatedHtml}${trailingWhitespace}`;
-        const translatedNodes = buildNodesFromHtml(normalizedHtml, placeholders);
-
-        if (translatedNodes.length === 0) {
+        if (!translatedText) {
             restoreOriginal(node);
             return;
         }
 
         node.dataset[TRANSLATION_LANGUAGE_ATTR] = settings.targetLanguage;
-        node.replaceChildren(...translatedNodes);
+        applyTextWithPlaceholders(
+            node,
+            `${leadingWhitespace}${translatedText}${trailingWhitespace}`,
+            placeholders
+        );
     } catch (error) {
         console.warn('Chat translation failed', error);
     } finally {
