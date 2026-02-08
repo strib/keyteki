@@ -13,23 +13,12 @@ const CHAT_CONTAINER_SELECTOR = '.gamechat .messages';
 const CHAT_MESSAGE_SELECTOR = '.message .message-fragment';
 const TRANSLATION_LANGUAGE_ATTR = 'translationLanguage';
 const TRANSLATION_PENDING_ATTR = 'translationPending';
-const PLACEHOLDER_START = '\uFFF0';
-const PLACEHOLDER_END = '\uFFF1';
-const PLACEHOLDER_REGEX = new RegExp(`${PLACEHOLDER_START}(\\d+)${PLACEHOLDER_END}`, 'g');
-const TERM_PLACEHOLDER_START = '\uFFF2';
-const TERM_PLACEHOLDER_END = '\uFFF3';
-const TERM_PLACEHOLDER_REGEX = new RegExp(
-    `${TERM_PLACEHOLDER_START}(\\d+)${TERM_PLACEHOLDER_END}`,
-    'g'
-);
-const PLACEHOLDER_CHARS_REGEX = new RegExp(
-    `[${PLACEHOLDER_START}${PLACEHOLDER_END}${TERM_PLACEHOLDER_START}${TERM_PLACEHOLDER_END}]`,
-    'g'
-);
-const PLACEHOLDER_RUN_REGEX = new RegExp(
-    `[${PLACEHOLDER_START}${PLACEHOLDER_END}${TERM_PLACEHOLDER_START}${TERM_PLACEHOLDER_END}\\u2022•·]+`,
-    'g'
-);
+const PLACEHOLDER_PREFIX = '[[#';
+const PLACEHOLDER_SUFFIX = ']]';
+const PLACEHOLDER_REGEX = /\[\[#\s*(\d+)\s*\]\]/g;
+const TERM_PLACEHOLDER_PREFIX = '[[@';
+const TERM_PLACEHOLDER_SUFFIX = ']]';
+const TERM_PLACEHOLDER_REGEX = /\[\[@\s*(\d+)\s*\]\]/g;
 const PROTECTED_TERMS = ['Æmber', 'Aember'];
 
 let settings = { ...DEFAULT_SETTINGS };
@@ -66,7 +55,7 @@ const buildTranslationPayload = (nodes) => {
         }
 
         if (child.nodeType === Node.ELEMENT_NODE) {
-            const placeholder = `${PLACEHOLDER_START}${placeholders.length}${PLACEHOLDER_END}`;
+            const placeholder = `${PLACEHOLDER_PREFIX}${placeholders.length}${PLACEHOLDER_SUFFIX}`;
             placeholders.push(child.cloneNode(true));
             text += placeholder;
         }
@@ -75,18 +64,8 @@ const buildTranslationPayload = (nodes) => {
     return { text, placeholders };
 };
 
-const stripPlaceholders = (text) => {
-    PLACEHOLDER_REGEX.lastIndex = 0;
-    return text.replace(PLACEHOLDER_REGEX, '');
-};
-
-const stripTermPlaceholders = (text) => {
-    TERM_PLACEHOLDER_REGEX.lastIndex = 0;
-    return text.replace(TERM_PLACEHOLDER_REGEX, '');
-};
-
-const stripPlaceholderChars = (text) => text.replace(PLACEHOLDER_CHARS_REGEX, '');
-const stripPlaceholderRuns = (text) => text.replace(PLACEHOLDER_RUN_REGEX, '');
+const stripPlaceholders = (text) => text.replace(PLACEHOLDER_REGEX, '');
+const stripTermPlaceholders = (text) => text.replace(TERM_PLACEHOLDER_REGEX, '');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -108,7 +87,7 @@ const protectTerms = (text) => {
             return;
         }
 
-        const placeholder = `${TERM_PLACEHOLDER_START}${placeholders.length}${TERM_PLACEHOLDER_END}`;
+        const placeholder = `${TERM_PLACEHOLDER_PREFIX}${placeholders.length}${TERM_PLACEHOLDER_SUFFIX}`;
         placeholders.push(term);
         protectedText = protectedText.replace(regex, placeholder);
     });
@@ -134,12 +113,7 @@ const buildNodesFromText = (text, placeholders) => {
 
     while ((match = PLACEHOLDER_REGEX.exec(text)) !== null) {
         if (match.index > lastIndex) {
-            const segment = stripPlaceholderRuns(
-                stripPlaceholderChars(text.slice(lastIndex, match.index))
-            );
-            if (segment) {
-                nodes.push(document.createTextNode(segment));
-            }
+            nodes.push(document.createTextNode(text.slice(lastIndex, match.index)));
         }
 
         const placeholderIndex = Number(match[1]);
@@ -153,10 +127,7 @@ const buildNodesFromText = (text, placeholders) => {
     }
 
     if (lastIndex < text.length) {
-        const segment = stripPlaceholderRuns(stripPlaceholderChars(text.slice(lastIndex)));
-        if (segment) {
-            nodes.push(document.createTextNode(segment));
-        }
+        nodes.push(document.createTextNode(text.slice(lastIndex)));
     }
 
     return nodes;
@@ -195,7 +166,7 @@ const restoreOriginal = (node) => {
 const requestTranslation = (text, targetLanguage) =>
     new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(
-            { type: 'translate', text, targetLanguage, format: 'html' },
+            { type: 'translate', text, targetLanguage, format: 'text' },
             (response) => {
                 if (chrome.runtime.lastError) {
                     reject(new Error(chrome.runtime.lastError.message));
@@ -256,6 +227,17 @@ const translateNode = async (node) => {
         );
 
         if (!translatedText) {
+            restoreOriginal(node);
+            return;
+        }
+
+        const placeholderMatches = Array.from(translatedText.matchAll(PLACEHOLDER_REGEX));
+        const termMatches = Array.from(translatedText.matchAll(TERM_PLACEHOLDER_REGEX));
+
+        if (
+            placeholderMatches.length !== placeholders.length ||
+            termMatches.length !== protectedPayload.placeholders.length
+        ) {
             restoreOriginal(node);
             return;
         }
