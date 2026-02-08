@@ -61,6 +61,31 @@ const buildTranslationPayload = (nodes) => {
 
 const stripPlaceholderTags = (html) => html.replace(PLACEHOLDER_TAG_REGEX, '');
 
+const ensureTrailingSpace = (node) => {
+    if (!node) {
+        return node;
+    }
+
+    if (node.nodeType === Node.TEXT_NODE) {
+        if (node.textContent && /\s$/.test(node.textContent)) {
+            return node;
+        }
+
+        node.textContent = `${node.textContent || ''} `;
+        return node;
+    }
+
+    if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.textContent && /\s$/.test(node.textContent)) {
+            return node;
+        }
+
+        node.appendChild(document.createTextNode(' '));
+    }
+
+    return node;
+};
+
 const collectTranslatedNodes = (node, placeholders) => {
     if (node.nodeType === Node.TEXT_NODE) {
         return [document.createTextNode(node.textContent || '')];
@@ -74,7 +99,7 @@ const collectTranslatedNodes = (node, placeholders) => {
 
     if (placeholderIndex !== null) {
         const placeholder = placeholders[Number(placeholderIndex)];
-        return placeholder ? [placeholder.cloneNode(true)] : [];
+        return placeholder ? [ensureTrailingSpace(placeholder.cloneNode(true))] : [];
     }
 
     const nodes = [];
