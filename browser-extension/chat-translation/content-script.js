@@ -13,12 +13,10 @@ const CHAT_CONTAINER_SELECTOR = '.gamechat .messages';
 const CHAT_MESSAGE_SELECTOR = '.message .message-fragment';
 const TRANSLATION_LANGUAGE_ATTR = 'translationLanguage';
 const TRANSLATION_PENDING_ATTR = 'translationPending';
-const PLACEHOLDER_PREFIX = '[[#';
-const PLACEHOLDER_SUFFIX = ']]';
-const PLACEHOLDER_REGEX = /\[\[#\s*(\d+)\s*\]\]/g;
-const TERM_PLACEHOLDER_PREFIX = '[[@';
-const TERM_PLACEHOLDER_SUFFIX = ']]';
-const TERM_PLACEHOLDER_REGEX = /\[\[@\s*(\d+)\s*\]\]/g;
+const PLACEHOLDER_PREFIX = 'KTICON';
+const PLACEHOLDER_REGEX = /KTICON(\d+)/gi;
+const TERM_PLACEHOLDER_PREFIX = 'KTTERM';
+const TERM_PLACEHOLDER_REGEX = /KTTERM(\d+)/gi;
 const PROTECTED_TERMS = ['Æmber', 'Aember'];
 
 let settings = { ...DEFAULT_SETTINGS };
@@ -55,7 +53,7 @@ const buildTranslationPayload = (nodes) => {
         }
 
         if (child.nodeType === Node.ELEMENT_NODE) {
-            const placeholder = `${PLACEHOLDER_PREFIX}${placeholders.length}${PLACEHOLDER_SUFFIX}`;
+            const placeholder = `${PLACEHOLDER_PREFIX}${placeholders.length}`;
             placeholders.push(child.cloneNode(true));
             text += placeholder;
         }
@@ -87,7 +85,7 @@ const protectTerms = (text) => {
             return;
         }
 
-        const placeholder = `${TERM_PLACEHOLDER_PREFIX}${placeholders.length}${TERM_PLACEHOLDER_SUFFIX}`;
+        const placeholder = `${TERM_PLACEHOLDER_PREFIX}${placeholders.length}`;
         placeholders.push(term);
         protectedText = protectedText.replace(regex, placeholder);
     });
@@ -96,8 +94,6 @@ const protectTerms = (text) => {
 };
 
 const restoreProtectedTerms = (text, placeholders) => {
-    TERM_PLACEHOLDER_REGEX.lastIndex = 0;
-
     return text.replace(TERM_PLACEHOLDER_REGEX, (match, index) => {
         const term = placeholders[Number(index)];
         return term === undefined ? match : term;
