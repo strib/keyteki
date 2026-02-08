@@ -13,11 +13,11 @@ const CHAT_CONTAINER_SELECTOR = '.gamechat .messages';
 const CHAT_MESSAGE_SELECTOR = '.message .message-fragment';
 const TRANSLATION_LANGUAGE_ATTR = 'translationLanguage';
 const TRANSLATION_PENDING_ATTR = 'translationPending';
-const PLACEHOLDER_START = '\uE000';
-const PLACEHOLDER_END = '\uE001';
+const PLACEHOLDER_START = '\uFFF0';
+const PLACEHOLDER_END = '\uFFF1';
 const PLACEHOLDER_REGEX = new RegExp(`${PLACEHOLDER_START}(\\d+)${PLACEHOLDER_END}`, 'g');
-const TERM_PLACEHOLDER_START = '\uE010';
-const TERM_PLACEHOLDER_END = '\uE011';
+const TERM_PLACEHOLDER_START = '\uFFF2';
+const TERM_PLACEHOLDER_END = '\uFFF3';
 const TERM_PLACEHOLDER_REGEX = new RegExp(
     `${TERM_PLACEHOLDER_START}(\\d+)${TERM_PLACEHOLDER_END}`,
     'g'
