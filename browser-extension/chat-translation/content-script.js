@@ -16,6 +16,13 @@ const TRANSLATION_PENDING_ATTR = 'translationPending';
 const PLACEHOLDER_START = '\uE000';
 const PLACEHOLDER_END = '\uE001';
 const PLACEHOLDER_REGEX = new RegExp(`${PLACEHOLDER_START}(\\d+)${PLACEHOLDER_END}`, 'g');
+const TERM_PLACEHOLDER_START = '\uE010';
+const TERM_PLACEHOLDER_END = '\uE011';
+const TERM_PLACEHOLDER_REGEX = new RegExp(
+    `${TERM_PLACEHOLDER_START}(\\d+)${TERM_PLACEHOLDER_END}`,
+    'g'
+);
+const PROTECTED_TERMS = ['Æmber', 'Aember'];
 
 let settings = { ...DEFAULT_SETTINGS };
 let chatObserver = null;
@@ -63,6 +70,48 @@ const buildTranslationPayload = (nodes) => {
 const stripPlaceholders = (text) => {
     PLACEHOLDER_REGEX.lastIndex = 0;
     return text.replace(PLACEHOLDER_REGEX, '');
+};
+
+const stripTermPlaceholders = (text) => {
+    TERM_PLACEHOLDER_REGEX.lastIndex = 0;
+    return text.replace(TERM_PLACEHOLDER_REGEX, '');
+};
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getProtectedTerms = () => {
+    const names = Array.from(document.querySelectorAll('.username'))
+        .map((node) => node.textContent?.trim())
+        .filter(Boolean);
+    return Array.from(new Set([...PROTECTED_TERMS, ...names])).sort((a, b) => b.length - a.length);
+};
+
+const protectTerms = (text) => {
+    const placeholders = [];
+    let protectedText = text;
+
+    getProtectedTerms().forEach((term) => {
+        const regex = new RegExp(escapeRegex(term), 'g');
+
+        if (!regex.test(protectedText)) {
+            return;
+        }
+
+        const placeholder = `${TERM_PLACEHOLDER_START}${placeholders.length}${TERM_PLACEHOLDER_END}`;
+        placeholders.push(term);
+        protectedText = protectedText.replace(regex, placeholder);
+    });
+
+    return { text: protectedText, placeholders };
+};
+
+const restoreProtectedTerms = (text, placeholders) => {
+    TERM_PLACEHOLDER_REGEX.lastIndex = 0;
+
+    return text.replace(TERM_PLACEHOLDER_REGEX, (match, index) => {
+        const term = placeholders[Number(index)];
+        return term === undefined ? match : term;
+    });
 };
 
 const buildNodesFromText = (text, placeholders) => {
@@ -146,8 +195,8 @@ const requestTranslation = (text, targetLanguage) =>
 
 const translateNode = async (node) => {
     const original = getOriginalContent(node);
-    const strippedText = stripPlaceholders(
-        original.nodes.map((child) => child.textContent || '').join('')
+    const strippedText = stripTermPlaceholders(
+        stripPlaceholders(original.nodes.map((child) => child.textContent || '').join(''))
     ).trim();
 
     if (!strippedText) {
@@ -174,24 +223,29 @@ const translateNode = async (node) => {
         const leadingWhitespace = text.match(/^\s+/)?.[0] ?? '';
         const trailingWhitespace = text.match(/\s+$/)?.[0] ?? '';
         const trimmedText = text.trim();
-        const strippedTextContent = stripPlaceholders(trimmedText).trim();
+        const strippedTextContent = stripTermPlaceholders(stripPlaceholders(trimmedText)).trim();
 
         if (!strippedTextContent) {
             restoreOriginal(node);
             return;
         }
 
-        const translatedText = await requestTranslation(trimmedText, settings.targetLanguage);
+        const protectedPayload = protectTerms(trimmedText);
+        const translatedText = await requestTranslation(
+            protectedPayload.text,
+            settings.targetLanguage
+        );
 
         if (!translatedText) {
             restoreOriginal(node);
             return;
         }
 
+        const restoredText = restoreProtectedTerms(translatedText, protectedPayload.placeholders);
         node.dataset[TRANSLATION_LANGUAGE_ATTR] = settings.targetLanguage;
         applyTextWithPlaceholders(
             node,
-            `${leadingWhitespace}${translatedText}${trailingWhitespace}`,
+            `${leadingWhitespace}${restoredText}${trailingWhitespace}`,
             placeholders
         );
     } catch (error) {
