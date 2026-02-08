@@ -229,16 +229,26 @@ const translateNode = async (node) => {
 
         const placeholderMatches = Array.from(translatedText.matchAll(PLACEHOLDER_REGEX));
         const termMatches = Array.from(translatedText.matchAll(TERM_PLACEHOLDER_REGEX));
+        const placeholderIndexes = new Set(placeholderMatches.map((match) => Number(match[1])));
+        const missingPlaceholders = placeholders
+            .map((_, index) => index)
+            .filter((index) => !placeholderIndexes.has(index));
 
-        if (
-            placeholderMatches.length !== placeholders.length ||
-            termMatches.length !== protectedPayload.placeholders.length
-        ) {
+        if (termMatches.length !== protectedPayload.placeholders.length) {
             restoreOriginal(node);
             return;
         }
 
-        const restoredText = restoreProtectedTerms(translatedText, protectedPayload.placeholders);
+        let normalizedText = translatedText;
+
+        if (missingPlaceholders.length) {
+            const tokens = missingPlaceholders
+                .map((index) => `${PLACEHOLDER_PREFIX}${index}`)
+                .join(' ');
+            normalizedText = `${translatedText} ${tokens}`.trim();
+        }
+
+        const restoredText = restoreProtectedTerms(normalizedText, protectedPayload.placeholders);
         node.dataset[TRANSLATION_LANGUAGE_ATTR] = settings.targetLanguage;
         applyTextWithPlaceholders(
             node,
