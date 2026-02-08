@@ -166,21 +166,25 @@ const translateNode = async (node) => {
 
     try {
         const { html, placeholders } = buildTranslationPayload(original.nodes);
-        const strippedHtml = stripPlaceholderTags(html).trim();
+        const leadingWhitespace = html.match(/^\s+/)?.[0] ?? '';
+        const trailingWhitespace = html.match(/\s+$/)?.[0] ?? '';
+        const trimmedHtml = html.trim();
+        const strippedHtml = stripPlaceholderTags(trimmedHtml).trim();
 
         if (!strippedHtml) {
             restoreOriginal(node);
             return;
         }
 
-        const translatedHtml = await requestTranslation(html, settings.targetLanguage);
+        const translatedHtml = await requestTranslation(trimmedHtml, settings.targetLanguage);
 
         if (!translatedHtml) {
             restoreOriginal(node);
             return;
         }
 
-        const translatedNodes = buildNodesFromHtml(translatedHtml, placeholders);
+        const normalizedHtml = `${leadingWhitespace}${translatedHtml}${trailingWhitespace}`;
+        const translatedNodes = buildNodesFromHtml(normalizedHtml, placeholders);
 
         if (translatedNodes.length === 0) {
             restoreOriginal(node);
