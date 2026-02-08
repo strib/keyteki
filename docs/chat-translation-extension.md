@@ -27,7 +27,7 @@ The extension will now run on:
 
 1. In `chrome://extensions`, click **Details** on the “Keyteki Chat Translator” extension.
 2. Click **Extension options**.
-3. Choose your target language, and optionally set a custom translation endpoint or API key.
+3. Choose your target language and translation provider, then set any required API keys.
 
 ### Default translation service
 
@@ -40,6 +40,11 @@ https://libretranslate.com/translate
 The managed endpoint requires an API key from https://portal.libretranslate.com. If you host your
 own translation server, replace the URL in the options page. The extension’s host permissions allow
 any HTTPS endpoint so you can point it at your own API.
+
+### Google Translate API
+
+Select **Google Translate API** in the options and provide a Google API key for the
+`translation.googleapis.com` v2 endpoint. The extension will use that provider for all translations.
 
 ## Notes
 

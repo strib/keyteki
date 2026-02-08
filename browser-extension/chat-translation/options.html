@@ -28,6 +28,14 @@
                 </label>
 
                 <label class="setting-column">
+                    <span>Translation provider</span>
+                    <select id="provider">
+                        <option value="libretranslate">LibreTranslate</option>
+                        <option value="google">Google Translate API</option>
+                    </select>
+                </label>
+
+                <label class="setting-column">
                     <span>Translation API endpoint</span>
                     <input
                         type="url"
@@ -43,6 +51,18 @@
                 <label class="setting-column">
                     <span>API key (optional)</span>
                     <input type="password" id="apiKey" placeholder="Enter API key if required" />
+                </label>
+
+                <label class="setting-column">
+                    <span>Google Translate API key</span>
+                    <input
+                        type="password"
+                        id="googleApiKey"
+                        placeholder="Enter Google Translate API key"
+                    />
+                    <small class="hint">
+                        Used only when the provider is set to Google Translate API.
+                    </small>
                 </label>
             </section>
 

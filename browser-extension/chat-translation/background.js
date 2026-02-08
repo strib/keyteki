@@ -5,8 +5,11 @@ const getDefaultLanguage = () => chrome.i18n.getUILanguage().split('-')[0];
 const DEFAULT_SETTINGS = {
     enabled: true,
     targetLanguage: getDefaultLanguage(),
+    provider: 'libretranslate',
     apiEndpoint: 'https://libretranslate.com/translate',
-    apiKey: ''
+    apiKey: '',
+    googleApiKey: '',
+    googleEndpoint: 'https://translation.googleapis.com/language/translate/v2'
 };
 
 let settings = { ...DEFAULT_SETTINGS };
@@ -16,40 +19,57 @@ const updateSettings = (newSettings) => {
     settings = { ...settings, ...newSettings };
 };
 
-const buildCacheKey = (text, targetLanguage, apiEndpoint) =>
-    `${apiEndpoint}::${targetLanguage}::${text}`;
+const buildCacheKey = (text, targetLanguage, provider, apiEndpoint) =>
+    `${provider}::${apiEndpoint}::${targetLanguage}::${text}`;
 
-const fetchTranslation = async (text, targetLanguage, apiEndpoint, apiKey, format) => {
+const fetchTranslation = async (text, targetLanguage, provider, format) => {
     const normalizedText = text.trim();
 
     if (!normalizedText) {
         return '';
     }
 
-    const cacheKey = buildCacheKey(normalizedText, targetLanguage, apiEndpoint);
+    const cacheKey = buildCacheKey(
+        normalizedText,
+        targetLanguage,
+        provider,
+        provider === 'google' ? settings.googleEndpoint : settings.apiEndpoint
+    );
 
     if (translationCache.has(cacheKey)) {
         return translationCache.get(cacheKey);
     }
 
-    const payload = {
-        q: normalizedText,
-        source: 'auto',
-        target: targetLanguage,
-        format
-    };
-
-    if (apiKey) {
-        payload.api_key = apiKey;
-    }
-
-    const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-    });
+    const response =
+        provider === 'google'
+            ? await fetch(
+                  `${settings.googleEndpoint}?key=${encodeURIComponent(settings.googleApiKey)}`,
+                  {
+                      method: 'POST',
+                      headers: {
+                          'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                          q: normalizedText,
+                          source: 'auto',
+                          target: targetLanguage,
+                          format
+                      })
+                  }
+              )
+            : await fetch(settings.apiEndpoint, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                      q: normalizedText,
+                      source: 'auto',
+                      target: targetLanguage,
+                      format,
+                      ...(settings.apiKey ? { api_key: settings.apiKey } : {})
+                  })
+              });
 
     if (!response.ok) {
         const responseText = await response.text();
@@ -57,7 +77,10 @@ const fetchTranslation = async (text, targetLanguage, apiEndpoint, apiKey, forma
     }
 
     const data = await response.json();
-    const translatedText = data.translatedText || '';
+    const translatedText =
+        provider === 'google'
+            ? data?.data?.translations?.[0]?.translatedText || ''
+            : data.translatedText || '';
 
     translationCache.set(cacheKey, translatedText);
 
@@ -99,13 +122,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
     }
 
-    fetchTranslation(
-        text,
-        targetLanguage,
-        settings.apiEndpoint,
-        settings.apiKey,
-        message.format || 'text'
-    )
+    fetchTranslation(text, targetLanguage, settings.provider, message.format || 'text')
         .then((translatedText) => sendResponse({ translatedText }))
         .catch((error) => {
             sendResponse({ error: error.message || 'Translation failed.' });

@@ -11,8 +11,11 @@ const getDefaultLanguage = () => {
 const DEFAULT_SETTINGS = {
     enabled: true,
     targetLanguage: getDefaultLanguage(),
+    provider: 'libretranslate',
     apiEndpoint: 'https://libretranslate.com/translate',
-    apiKey: ''
+    apiKey: '',
+    googleApiKey: '',
+    googleEndpoint: 'https://translation.googleapis.com/language/translate/v2'
 };
 
 const LANGUAGE_OPTIONS = [
@@ -69,8 +72,10 @@ const LANGUAGE_OPTIONS = [
 const statusEl = document.getElementById('status');
 const enabledEl = document.getElementById('enabled');
 const targetLanguageEl = document.getElementById('targetLanguage');
+const providerEl = document.getElementById('provider');
 const apiEndpointEl = document.getElementById('apiEndpoint');
 const apiKeyEl = document.getElementById('apiKey');
+const googleApiKeyEl = document.getElementById('googleApiKey');
 
 const populateLanguageOptions = () => {
     targetLanguageEl.innerHTML = '';
@@ -95,8 +100,10 @@ const saveSettings = () => {
     const updatedSettings = {
         enabled: enabledEl.checked,
         targetLanguage: targetLanguageEl.value,
+        provider: providerEl.value,
         apiEndpoint: apiEndpointEl.value.trim(),
-        apiKey: apiKeyEl.value.trim()
+        apiKey: apiKeyEl.value.trim(),
+        googleApiKey: googleApiKeyEl.value.trim()
     };
 
     chrome.storage.sync.set(updatedSettings, () => {
@@ -109,8 +116,10 @@ const loadSettings = () => {
     chrome.storage.sync.get(DEFAULT_SETTINGS, (stored) => {
         enabledEl.checked = stored.enabled;
         targetLanguageEl.value = stored.targetLanguage;
+        providerEl.value = stored.provider;
         apiEndpointEl.value = stored.apiEndpoint;
         apiKeyEl.value = stored.apiKey;
+        googleApiKeyEl.value = stored.googleApiKey;
     });
 };
 
@@ -120,8 +129,10 @@ const init = () => {
 
     enabledEl.addEventListener('change', saveSettings);
     targetLanguageEl.addEventListener('change', saveSettings);
+    providerEl.addEventListener('change', saveSettings);
     apiEndpointEl.addEventListener('change', saveSettings);
     apiKeyEl.addEventListener('change', saveSettings);
+    googleApiKeyEl.addEventListener('change', saveSettings);
 };
 
 document.addEventListener('DOMContentLoaded', init);

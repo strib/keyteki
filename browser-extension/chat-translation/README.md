@@ -14,11 +14,12 @@ choose.
 1. Open the extension’s **Details** page.
 2. Click **Extension options**.
 3. Choose a target language.
-4. Set the translation API endpoint and (optional) API key.
+4. Choose a translation provider and supply any required API keys.
 
-The default endpoint is `https://libretranslate.com/translate`, which requires an API key from
-https://portal.libretranslate.com. If you host LibreTranslate yourself, point the endpoint at your
-server instead.
+The default provider is LibreTranslate at `https://libretranslate.com/translate`, which requires an
+API key from https://portal.libretranslate.com. If you host LibreTranslate yourself, point the
+endpoint at your server instead. You can also switch to the Google Translate API by selecting it in
+the options and providing a Google API key.
 
 ## Behavior
 
