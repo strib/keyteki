@@ -22,6 +22,10 @@ const TERM_PLACEHOLDER_REGEX = new RegExp(
     `${TERM_PLACEHOLDER_START}(\\d+)${TERM_PLACEHOLDER_END}`,
     'g'
 );
+const PLACEHOLDER_CHARS_REGEX = new RegExp(
+    `[${PLACEHOLDER_START}${PLACEHOLDER_END}${TERM_PLACEHOLDER_START}${TERM_PLACEHOLDER_END}]`,
+    'g'
+);
 const PROTECTED_TERMS = ['Æmber', 'Aember'];
 
 let settings = { ...DEFAULT_SETTINGS };
@@ -77,6 +81,8 @@ const stripTermPlaceholders = (text) => {
     return text.replace(TERM_PLACEHOLDER_REGEX, '');
 };
 
+const stripPlaceholderChars = (text) => text.replace(PLACEHOLDER_CHARS_REGEX, '');
+
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const getProtectedTerms = () => {
@@ -123,7 +129,10 @@ const buildNodesFromText = (text, placeholders) => {
 
     while ((match = PLACEHOLDER_REGEX.exec(text)) !== null) {
         if (match.index > lastIndex) {
-            nodes.push(document.createTextNode(text.slice(lastIndex, match.index)));
+            const segment = stripPlaceholderChars(text.slice(lastIndex, match.index));
+            if (segment) {
+                nodes.push(document.createTextNode(segment));
+            }
         }
 
         const placeholderIndex = Number(match[1]);
@@ -137,7 +146,10 @@ const buildNodesFromText = (text, placeholders) => {
     }
 
     if (lastIndex < text.length) {
-        nodes.push(document.createTextNode(text.slice(lastIndex)));
+        const segment = stripPlaceholderChars(text.slice(lastIndex));
+        if (segment) {
+            nodes.push(document.createTextNode(segment));
+        }
     }
 
     return nodes;
